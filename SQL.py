@@ -28,24 +28,19 @@ def create_tables():
                     ExerciseId INTEGER PRIMARY KEY AUTOINCREMENT,
                     Name TEXT NOT NULL,
                     MusclesId INTEGER NOT NULL,
-                    FOREIGN KEY (MusclesId) REFERENCES MusclesExercise (MusclesExerciseId)
+                    FOREIGN KEY (MusclesId) REFERENCES MusclesExercise (MusclesExerciseId),
+                    UNIQUE(Name)
                 );
                 """)
     cur.execute("""
                 create table Workout
                 (
-                    WorkoutId INTEGER PRIMARY KEY AUTOINCREMENT
-                );
-                """)
-    cur.execute("""
-                create table WorkoutExercise
-                (
-                    WorkoutExerciseId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    WorkoutId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Name TEXT NOT NULL,
                     ExerciseId INTEGER,
-                    WorkoutId INTEGER,
                     Sets INTEGER NOT NULL,
                     FOREIGN KEY (ExerciseId) REFERENCES Exercise (ExerciseId),
-                    FOREIGN KEY (WorkoutId) REFERENCES Workouts (WorkoutId)
+                    UNIQUE(ExerciseId, Sets)
                 )
                 """)
 
@@ -53,7 +48,6 @@ def create_tables():
                     [(m.value,) for m in Muscles])
 
     con.commit()
-    con.close()
 #name is the name of the exercise
 #prime_muscles is a list of muscles that this exercise primary uses
 #second_muscles is a list of muscles that this exercise uses secondary
@@ -80,6 +74,22 @@ def add_exercise(name, prime_muscles, second_muscles):
             muscle_id = cur.execute("SELECT MusclesId FROM MusclesExercise WHERE MusclesName=?;", muscle.value).fetchone()[0]
             cur.execute("INSERT OR IGNORE INTO Exercise (Name, MuscleId) VALUES (?, ?);",
                         (name, muscle_id))"""
+    except sq.IntegrityError:
+        return False
+    finally:
+        con.commit()
+
+def add_workout(name, exercises, sets):
+    try:
+        for i, exercise in enumerate(exercises, start=0):
+            exercise_id = cur.execute(
+                "SELECT ExerciseId FROM Exercise WHERE Name=?;",
+                (exercise,)
+            ).fetchone()[0]
+            cur.execute(
+                """INSERT OR IGNORE INTO Workout (Name, ExerciseId, Sets) VALUES (?, ?, ?)""",
+                (name, exercise_id, sets[i])
+            )
     except sq.IntegrityError:
         return False
     finally:
