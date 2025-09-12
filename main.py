@@ -1,4 +1,5 @@
-from SQL import create_tables
+from SQL import *
+from muscleEnum import Muscles
 
 if __name__ == '__main__':
-    create_tables()
+    add_exercise("Bench Press", [Muscles.CHEST, Muscles.SHOULDERS, Muscles.TRICEPS], [])

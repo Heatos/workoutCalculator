@@ -1,8 +1,11 @@
 import sqlite3 as sq
+from muscleEnum import Muscles
+
 con = sq.connect('database.db')
 cur = con.cursor()
 
 def create_tables():
+
     cur.execute("""
                 CREATE TABLE Muscles
                 (
@@ -16,6 +19,7 @@ def create_tables():
                     MuscleName TEXT NOT NULL,
                     IsMainMuscle INTEGER DEFAULT 0,
                     FOREIGN KEY (MuscleName) REFERENCES Muscles (Name)
+                    UNIQUE(MuscleName, IsMainMuscle)
                 );
                 """)
     cur.execute("""
@@ -45,9 +49,38 @@ def create_tables():
                 )
                 """)
 
-    muscles = ['Abs', 'Biceps', 'Calves', 'Chest', 'Forearms', 'Glutes', 'Hamstrings', 'Lats',
-               'Lowerback', 'Quadriceps', 'Shoulders', 'Trapezius', 'Triceps', 'Upperback']
-    cur.executemany("INSERT OR IGNORE INTO Muscles (Name) VALUES (?)", [(muscles,) for muscles in muscles])
+    cur.executemany("INSERT OR IGNORE INTO Muscles (Name) VALUES (?)",
+                    [(m.value,) for m in Muscles])
 
     con.commit()
     con.close()
+#name is the name of the exercise
+#prime_muscles is a list of muscles that this exercise primary uses
+#second_muscles is a list of muscles that this exercise uses secondary
+
+def add_exercise(name, prime_muscles, second_muscles):
+    try:
+        for i, (muscle, is_main) in enumerate(
+                [(m, True) for m in prime_muscles] + [(m, False) for m in second_muscles],
+                start=0
+        ):
+            cur.execute(
+                "INSERT OR IGNORE INTO MusclesExercise (MuscleName, IsMainMuscle) VALUES (?, ?);",
+                (muscle.value, is_main))
+            muscle_id = cur.execute(
+                "SELECT MusclesExerciseId FROM MusclesExercise WHERE MuscleName=? AND IsMainMuscle=?;",
+                (muscle.value, is_main)
+            ).fetchone()[0]
+            cur.execute(
+                "INSERT OR IGNORE INTO Exercise (Name, MusclesId) VALUES (?, ?);",
+                (name, muscle_id))
+        """for muscle in second_muscles:
+            cur.execute("INSERT OR IGNORE INTO MusclesExercise (MusclesName, IsMainMuscle) VALUES (?, ?);",
+                        (muscle.value, False))
+            muscle_id = cur.execute("SELECT MusclesId FROM MusclesExercise WHERE MusclesName=?;", muscle.value).fetchone()[0]
+            cur.execute("INSERT OR IGNORE INTO Exercise (Name, MuscleId) VALUES (?, ?);",
+                        (name, muscle_id))"""
+    except sq.IntegrityError:
+        return False
+    finally:
+        con.commit()
