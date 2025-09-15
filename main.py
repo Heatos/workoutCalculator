@@ -1,4 +1,4 @@
-from SQLalcemy import *
+from SQLTables import *
 from muscleEnum import Muscles
 
 if __name__ == '__main__':
