@@ -1,2 +1,3 @@
 # workoutCalculator
-This is caclulator shows you how many sets you workout any given muscle group to hopefully help the user a ways to imporve their weekly workout
+This is calculator shows you how many sets you work out any given muscle group to help the user a ways to improve their weekly
+workout
