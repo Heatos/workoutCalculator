@@ -1,6 +1,6 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from muscleEnum import Muscles
+from database.muscleEnum import Muscles
 
 engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
 
@@ -76,3 +76,10 @@ def add_workout(name, exercises, sets):
                 insert(Workout).values(name=name, exercise_id=exercise_id, sets=sets[i])
                 .prefix_with("OR IGNORE")
             )
+
+#return a list of all the workouts
+def get_all_workouts():
+    with Session(engine) as session:
+        workouts = session.query(Workout).all()
+        # workouts is now a list of Workout objects
+        return workouts
