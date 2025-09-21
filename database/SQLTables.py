@@ -22,22 +22,24 @@ class MusclesExercise(Base):
 
 class Exercise(Base):
     __tablename__ = 'exercise'
-    id: Mapped[int] = mapped_column( primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False, unique=True)
     muscles_id: Mapped[int] = mapped_column(ForeignKey('muscles_exercise.id'))
+
+class WorkoutExercise(Base):
+    __tablename__ = 'workout_exercise'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    workout_id: Mapped[int] = mapped_column(ForeignKey('workout.id'))
+    exercise_id: Mapped[int] = mapped_column(ForeignKey('exercise.id'))
+    sets: Mapped[int] = mapped_column(nullable=False, default=0)
     __table_args__ = (
-        UniqueConstraint("name", name="uq_muscle_exercise_name"),
+        UniqueConstraint("workout_id", "exercise_id", name="uq_workout_exercise"),
     )
 
 class Workout(Base):
     __tablename__ = 'workout'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(nullable=False)
-    exercise_id: Mapped[int] = mapped_column(ForeignKey('exercise.id'))
-    sets: Mapped[int] = mapped_column(nullable=False, default=0)
-    __table_args__ = (
-        UniqueConstraint("exercise_id", "sets", name="uq_workout_exercise_sets"),
-    )
+    name: Mapped[str] = mapped_column(nullable=False)  # one row per workout
 
 def create_tables():
     Base.metadata.create_all(engine)
@@ -66,20 +68,56 @@ def add_exercise(name, prime_muscles, second_muscles):
 
 def add_workout(name, exercises, sets):
     with engine.begin() as conn:
-        for i, exercise in enumerate(exercises, start=0):
-            exercise_id = (
-                select(Exercise.id)
-                .where(Exercise.name == exercise)
-                .scalar_subquery()
-            )
+        result = conn.execute(
+            insert(Workout).values(name=name)
+        )
+        workout_id = result.inserted_primary_key[0]
+
+        for i, exercise in enumerate(exercises):
+            exercise_id = conn.execute(
+                select(Exercise.id).where(Exercise.name == exercise)
+            ).scalar_one()
+
             conn.execute(
-                insert(Workout).values(name=name, exercise_id=exercise_id, sets=sets[i])
-                .prefix_with("OR IGNORE")
+                insert(WorkoutExercise).values(
+                    workout_id=workout_id,
+                    exercise_id=exercise_id,
+                    sets=sets[i]
+                )
             )
 
 #return a list of all the workouts
 def get_all_workouts():
-    with Session(engine) as session:
-        workouts = session.query(Workout).all()
-        # workouts is now a list of Workout objects
-        return workouts
+    with engine.begin() as conn:
+        workouts = conn.execute(
+            select(Workout.id, Workout.name).order_by(Workout.name)
+        ).all()
+
+    return [(w.name, w.id) for w in workouts]
+
+def get_exercises(workout_id):
+    with engine.begin() as conn:
+        # get all exercise_ids from the workout
+        exercise_rows = conn.execute(
+            select(WorkoutExercise.exercise_id).where(WorkoutExercise.id == workout_id)
+        ).all()
+        output = []
+        for row in exercise_rows:
+            exercise_id = row[0]
+            exercise_name = conn.execute(
+                select(Exercise.name).where(Exercise.id == exercise_id)
+            ).scalar()
+            output.append((exercise_name, exercise_id))
+
+        return output
+
+def print_all_tables():
+    with engine.begin() as conn:
+        for table_name, table in Base.metadata.tables.items():
+            print(f"\n--- {table_name.upper()} ---")
+            rows = conn.execute(select(table)).all()
+            if not rows:
+                print("(empty)")
+            else:
+                for row in rows:
+                    print(dict(row._mapping))  # Row -> dict for nice printing
