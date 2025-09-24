@@ -24,7 +24,7 @@ class Exercise(Base):
     __tablename__ = 'exercise'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False, unique=True)
-    muscles_id: Mapped[int] = mapped_column(ForeignKey('muscles_exercise.id'))
+    muscles_exercise_id: Mapped[int] = mapped_column(ForeignKey('muscles_exercise.id'))
 
 class WorkoutExercise(Base):
     __tablename__ = 'workout_exercise'
@@ -39,7 +39,7 @@ class WorkoutExercise(Base):
 class Workout(Base):
     __tablename__ = 'workout'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(nullable=False)  # one row per workout
+    name: Mapped[str] = mapped_column(nullable=False)
 
 def create_tables():
     Base.metadata.create_all(engine)
@@ -62,7 +62,7 @@ def add_exercise(name, prime_muscles, second_muscles):
                 .where(MusclesExercise.is_main_muscle == is_main)
                 .scalar_subquery())
             conn.execute(
-                insert(Exercise).values(name=name, muscles_id=select_muscle_id)
+                insert(Exercise).values(name=name, muscles_exercise_id=select_muscle_id)
                 .prefix_with("OR IGNORE")
             )
 
@@ -91,9 +91,9 @@ def get_all_workouts():
     with engine.begin() as conn:
         workouts = conn.execute(
             select(Workout.id, Workout.name).order_by(Workout.name)
-        ).all()
+        ).mappings().all()
 
-    return [(w.name, w.id) for w in workouts]
+    return [dict(id = w.id, name = w.name) for w in workouts]
 
 def get_exercises(workout_id):
     with engine.begin() as conn:
@@ -110,6 +110,57 @@ def get_exercises(workout_id):
             output.append((exercise_name, exercise_id))
 
         return output
+
+#creates a dictionary from muscles to how many sets they have in this list of workout ids
+def workout_list_to_muscles(workout_id_list):
+    output_dict = {muscle.value: 0 for muscle in Muscles}
+
+    for workout_id in workout_id_list:
+        print("Workout ID:", workout_id)
+        workout_to_muscles(workout_id, output_dict)
+    return output_dict
+
+#adds to the dictionary the amount of sets a single workout adds to muscle groups
+def workout_to_muscles(workout_id, output_dict):
+    #get exercise
+    with engine.begin() as conn:
+        workout_exercise = conn.execute(
+            select(WorkoutExercise.id, WorkoutExercise.sets)
+            .where(WorkoutExercise.workout_id == workout_id)
+        )
+        for work_exercise in workout_exercise:
+            print("Work Exercise:", work_exercise)
+            exercise_to_muscle(work_exercise, output_dict)
+
+#adds to the dictionary the amount of sets a single exercise adds
+def exercise_to_muscle(work_exercise, output_dict):
+    with engine.begin() as conn:
+        exercises = conn.execute(
+            select(Exercise.id, Exercise.muscles_exercise_id)
+            .where(Exercise.muscles_exercise_id == work_exercise.id)
+        )
+        for exercise in exercises:
+            print("Exercise:", exercise)
+            muscles_to_muscle(exercise, output_dict, work_exercise.sets)
+
+#adds the amount of sets a single exercise gives
+def muscles_to_muscle(exercise, output_dict, sets):
+    with engine.begin() as conn:
+        muscles = conn.execute(
+            select(MusclesExercise.muscle_name, MusclesExercise.is_main_muscle)
+            .where(MusclesExercise.id == exercise.muscles_exercise_id)
+        )
+    for muscle in muscles:
+        if muscle.is_main_muscle:
+            output_dict[muscle.muscle_name] += sets
+        else:
+            output_dict[muscle.muscle_name] += (sets * 0.5)
+
+def get_workout_ids(workouts_1):
+    out_list = []
+    for workout in workouts_1:
+        out_list.append(workout['id'])  # add the id to the output list
+    return out_list
 
 def print_all_tables():
     with engine.begin() as conn:

@@ -16,7 +16,7 @@ if __name__ == '__main__':
                 [3, 3, 3, 3, 4, 4])
     add_workout("Push Day", ["Bench Press", "Shoulder Press", "Cable Fly", "Cable Lateral Raise", "Triceps Extension"],
                 [3, 3, 3, 3, 4])
-    print_all_tables()
+    print(workout_list_to_muscles(get_workout_ids(get_all_workouts())))
 
 
 def test_get_all_workouts():
@@ -31,7 +31,6 @@ def test_get_all_workouts():
                 [3, 3, 3, 3, 4, 4])
     add_workout("Push Day", ["Bench Press", "Shoulder Press", "Cable Fly", "Cable Lateral Raise", "Triceps Extension"],
                 [3, 3, 3, 3, 4])
-    print(get_all_workouts())
 
 def test_add_workout():
     create_tables()
