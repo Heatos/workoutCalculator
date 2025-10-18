@@ -74,9 +74,7 @@ def add_workout(name, exercises, sets):
         workout_id = result.inserted_primary_key[0]
 
         for i, exercise in enumerate(exercises):
-            exercise_id = conn.execute(
-                select(Exercise.id).where(Exercise.name == exercise)
-            ).scalar_one()
+            exercise_id = get_exercise_id(exercise, conn)
 
             conn.execute(
                 insert(WorkoutExercise).values(
@@ -86,12 +84,48 @@ def add_workout(name, exercises, sets):
                 )
             )
 
+def update_workout(workout_id, exercises, sets):
+
+    with engine.begin() as conn:
+        current_workout_exercises = conn.execute(
+            select(WorkoutExercise.exercise_id)
+            .where(WorkoutExercise.workout_id == workout_id)
+        ).scalars().all()
+
+        #get exercise_id
+        for i, exercise in enumerate(exercises):
+            exercise_id = get_exercise_id(exercise, conn)
+            if exercise_id in current_workout_exercises:
+                current_workout_exercises.remove(exercise_id)
+                conn.execute(
+                    update(WorkoutExercise)
+                    .where(WorkoutExercise.workout_id == workout_id)
+                    .where(WorkoutExercise.exercise_id == exercise_id)
+                    .values(sets=sets[i])
+                )
+            else:
+                delete_exercise_id(workout_id, exercise_id, conn)
+        for exercise_id in current_workout_exercises:
+            delete_exercise_id(workout_id, exercise_id, conn)
+
+def get_exercise_id(exercise, conn):
+        return conn.execute(
+            select(Exercise.id).where(Exercise.name == exercise)
+        ).scalar_one()
+
+def delete_exercise_id(workout_id, exercise_id, conn):
+    conn.execute(
+        delete(WorkoutExercise)
+        .where(WorkoutExercise.workout_id == workout_id)
+        .where(WorkoutExercise.exercise_id == exercise_id)
+    )
+
 #return a list of all the workouts
 def get_all_workouts():
     with engine.begin() as conn:
         workouts = conn.execute(
-            select(Workout.id, Workout.name).order_by(Workout.name)
-        ).mappings().all()
+            select(Workout.id, Workout.name)
+        )
 
     return [dict(id = w.id, name = w.name) for w in workouts]
 
@@ -116,7 +150,6 @@ def workout_list_to_muscles(workout_id_list):
     output_dict = {muscle.value: 0 for muscle in Muscles}
 
     for workout_id in workout_id_list:
-        print("Workout ID:", workout_id)
         workout_to_muscles(workout_id, output_dict)
     return output_dict
 
@@ -129,7 +162,6 @@ def workout_to_muscles(workout_id, output_dict):
             .where(WorkoutExercise.workout_id == workout_id)
         )
         for work_exercise in workout_exercise:
-            print("Work Exercise:", work_exercise)
             exercise_to_muscle(work_exercise, output_dict)
 
 #adds to the dictionary the amount of sets a single exercise adds
@@ -140,7 +172,6 @@ def exercise_to_muscle(work_exercise, output_dict):
             .where(Exercise.muscles_exercise_id == work_exercise.id)
         )
         for exercise in exercises:
-            print("Exercise:", exercise)
             muscles_to_muscle(exercise, output_dict, work_exercise.sets)
 
 #adds the amount of sets a single exercise gives

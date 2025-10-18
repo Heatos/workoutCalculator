@@ -11,7 +11,6 @@ def members():
 
 @app.route("/workouts")
 def workouts():
-    database.main.test()
     all_workouts = sq.get_all_workouts()
     # convert SQLAlchemy objects to dictionaries
     workouts_list = [
