@@ -35,7 +35,7 @@ def test_get_all_workouts():
                 [3, 3, 3, 3, 4])
 
 def test_add_workout():
-    create_tables()
+    #create_tables()
     add_exercise("Bench Press", [Muscles.CHEST, Muscles.SHOULDERS, Muscles.TRICEPS], [])
     add_exercise("Shoulder Press", [Muscles.SHOULDERS], [Muscles.UPPERBACK])
     add_exercise("Cable Fly", [Muscles.CHEST], [Muscles.TRICEPS])
@@ -46,7 +46,7 @@ def test_add_workout():
                 [3, 3, 3, 3, 4, 4])
 
 def test_add_exercise():
-    create_tables()
+    #create_tables()
     add_exercise("Bench Press", [Muscles.CHEST, Muscles.SHOULDERS, Muscles.TRICEPS], [])
 
 def test_create_tables():
