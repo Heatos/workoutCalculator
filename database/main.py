@@ -1,5 +1,3 @@
-from django.core.checks import database
-
 from database.SQLTables import *
 from database.muscleEnum import Muscles
 

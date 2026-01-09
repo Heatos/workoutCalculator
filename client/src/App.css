@@ -1,5 +1,214 @@
 .App {
   text-align: center;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.App h1 {
+  color: #282c34;
+  margin-bottom: 10px;
+}
+
+.App h2 {
+  color: #61dafb;
+  margin-top: 30px;
+  margin-bottom: 20px;
+}
+
+.workout-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workout-item {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.workout-item:hover {
+  background-color: #e8f4f8;
+  border-color: #61dafb;
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(97, 218, 251, 0.2);
+}
+
+.workout-id {
+  background-color: #61dafb;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 0.9em;
+  min-width: 50px;
+  text-align: center;
+}
+
+.workout-name {
+  font-size: 1.1em;
+  font-weight: 500;
+  color: #282c34;
+  flex: 1;
+}
+
+.error {
+  color: #e74c3c;
+  background-color: #fee;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e74c3c;
+  margin: 10px 0;
+}
+
+.add-workout-btn {
+  background-color: #61dafb;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 20px 0;
+  transition: all 0.2s ease;
+}
+
+.add-workout-btn:hover {
+  background-color: #4fa8c5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(97, 218, 251, 0.3);
+}
+
+.workout-form {
+  background-color: #f9f9f9;
+  border: 2px solid #61dafb;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  text-align: left;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.workout-form h2 {
+  margin-top: 0;
+  color: #282c34;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #282c34;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1em;
+  box-sizing: border-box;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #61dafb;
+  box-shadow: 0 0 0 3px rgba(97, 218, 251, 0.1);
+}
+
+.exercise-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.exercise-row select {
+  flex: 2;
+}
+
+.exercise-row input[type="number"] {
+  flex: 1;
+  min-width: 80px;
+}
+
+.remove-btn {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease;
+}
+
+.remove-btn:hover {
+  background-color: #c0392b;
+}
+
+.add-row-btn {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  margin-top: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.add-row-btn:hover {
+  background-color: #229954;
+}
+
+.submit-btn {
+  background-color: #61dafb;
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 6px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 16px;
+  transition: all 0.2s ease;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: #4fa8c5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(97, 218, 251, 0.3);
+}
+
+.submit-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .App-logo {

@@ -1,8 +1,11 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from pathlib import Path
 from database.muscleEnum import Muscles
 
-engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
+# Use persistent database file instead of in-memory
+db_path = Path(__file__).parent.parent / "workout.db"
+engine = create_engine(f"sqlite+pysqlite:///{db_path}", echo=True)
 
 class Base(DeclarativeBase):
     pass
@@ -44,8 +47,11 @@ class Workout(Base):
 def create_tables():
     Base.metadata.create_all(engine)
     with engine.begin() as conn:
+        # Insert muscles only if they don't already exist
+        existing_muscles = {row[0] for row in conn.execute(select(MusclesTable.name))}
         for m in Muscles:
-            conn.execute(insert(MusclesTable).values(name=m.value))
+            if m.value not in existing_muscles:
+                conn.execute(insert(MusclesTable).values(name=m.value))
 
 def add_exercise(name, prime_muscles, second_muscles):
     with engine.begin() as conn:
@@ -141,6 +147,14 @@ def get_all_workouts():
         )
 
     return [dict(id = w.id, name = w.name) for w in workouts]
+
+#return a list of all exercises
+def get_all_exercises():
+    with engine.begin() as conn:
+        exercises = conn.execute(
+            select(Exercise.id, Exercise.name)
+        )
+    return [dict(id = e.id, name = e.name) for e in exercises]
 
 def get_exercises(workout_id):
     with engine.begin() as conn:
