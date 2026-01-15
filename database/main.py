@@ -1,5 +1,5 @@
-from database.SQLTables import *
-from database.muscleEnum import Muscles
+from SQLTables import *
+from muscleEnum import Muscles
 
 if __name__ == '__main__':
     create_tables()
