@@ -1,7 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from pathlib import Path
-from database.muscleEnum import Muscles
+from muscleEnum import Muscles
 
 # Use persistent database file instead of in-memory
 db_path = Path(__file__).parent.parent / "workout.db"

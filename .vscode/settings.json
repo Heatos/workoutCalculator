@@ -1,8 +1,0 @@
-{
-    "python.defaultInterpreterPath": "${workspaceFolder}\\flask-server\\venv\\Scripts\\python.exe",
-    "python.analysis.extraPaths": [
-        "${workspaceFolder}\\flask-server\\venv\\Lib\\site-packages"
-    ],
-    "python.analysis.typeCheckingMode": "basic",
-    "python.languageServer": "Pylance"
-}
