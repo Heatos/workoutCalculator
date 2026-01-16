@@ -154,7 +154,18 @@ def get_all_exercises():
         exercises = conn.execute(
             select(Exercise.id, Exercise.name)
         )
-    return [dict(id = e.id, name = e.name) for e in exercises]
+        result = []
+        for e in exercises:
+            # Fetch primary and secondary muscles here
+            primary_muscles = [m.id for m in e.primary_muscles]  # if relationship
+            secondary_muscles = [m.id for m in e.secondary_muscles]
+            result.append({
+                "id": e.id,
+                "name": e.name,
+                "primary_muscles": primary_muscles,
+                "secondary_muscles": secondary_muscles
+            })
+        return result
 
 def get_exercises(workout_id):
     with engine.begin() as conn:

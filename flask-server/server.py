@@ -49,10 +49,12 @@ def add_workout():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+from flask import jsonify
+
 @app.route("/exercises", methods=["GET"])
 def get_exercises():
     all_exercises = sq.get_all_exercises()
-    return {"exercises": all_exercises}
+    return jsonify(all_exercises)
 
 if __name__ == "__main__":
     app.run(debug=True)

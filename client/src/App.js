@@ -1,250 +1,128 @@
-import React, { useState, useEffect } from "react"
-import "./App.css"
+import React, { useEffect, useState } from "react";
 
 function App() {
-    const [workouts, setWorkouts] = useState([])
-    const [exercises, setExercises] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
-    const [showForm, setShowForm] = useState(false)
-    const [formData, setFormData] = useState({
-        name: "",
-        exerciseRows: [{ exercise: "", sets: "" }]
-    })
-    const [submitting, setSubmitting] = useState(false)
+  // -------------------------
+  // State
+  // -------------------------
+  const [muscles, setMuscles] = useState([]);
+  const [name, setName] = useState("");
+  const [primaryMuscles, setPrimaryMuscles] = useState([]);
+  const [secondaryMuscles, setSecondaryMuscles] = useState([]);
+  const [status, setStatus] = useState("");
 
-    useEffect(() => {
-        fetchWorkouts()
-        fetchExercises()
-    }, [])
+  // -------------------------
+  // Load muscles from DB
+  // -------------------------
+  useEffect(() => {
+    fetch("http://localhost:5000/workout.db")
+      .then(res => res.json())
+      .then(data => setMuscles(data))
+      .catch(() => setStatus("Failed to load muscles"));
+  }, []);
 
-    const fetchWorkouts = () => {
-        fetch("/workouts")
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error("Failed to fetch workouts")
-                }
-                return res.json()
-            })
-            .then(data => {
-                setWorkouts(data.workouts || [])
-                setLoading(false)
-            })
-            .catch(err => {
-                setError(err.message)
-                setLoading(false)
-            })
+  // -------------------------
+  // Handlers for menus
+  // -------------------------
+  const handlePrimaryChange = (e) => {
+    const selected = Array.from(
+      e.target.selectedOptions,
+      option => Number(option.value)
+    );
+    setPrimaryMuscles(selected);
+  };
+
+  const handleSecondaryChange = (e) => {
+    const selected = Array.from(
+      e.target.selectedOptions,
+      option => Number(option.value)
+    );
+    setSecondaryMuscles(selected);
+  };
+
+  // -------------------------
+  // Submit
+  // -------------------------
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus("");
+
+    const payload = {
+      name,
+      primary_muscles: primaryMuscles,
+      secondary_muscles: secondaryMuscles,
+    };
+
+    try {
+      const res = await fetch("http://localhost:5000/exercises", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error();
+
+      setStatus("Exercise added!");
+      setName("");
+      setPrimaryMuscles([]);
+      setSecondaryMuscles([]);
+    } catch {
+      setStatus("Error adding exercise");
     }
+  };
 
-    const fetchExercises = () => {
-        fetch("/exercises")
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error("Failed to fetch exercises")
-                }
-                return res.json()
-            })
-            .then(data => {
-                setExercises(data.exercises || [])
-            })
-            .catch(err => {
-                console.error("Error fetching exercises:", err)
-            })
-    }
+  // -------------------------
+  // UI
+  // -------------------------
+  return (
+    <div style={{ padding: "2rem", maxWidth: "600px" }}>
+      <h1>Add Exercise</h1>
 
-    if (loading) {
-        return (
-            <div className="App">
-                <h1>Workout Calculator</h1>
-                <p>Loading workouts...</p>
-            </div>
-        )
-    }
-
-    if (error) {
-        return (
-            <div className="App">
-                <h1>Workout Calculator</h1>
-                <p className="error">Error: {error}</p>
-            </div>
-        )
-    }
-
-    const addExerciseRow = () => {
-        setFormData({
-            ...formData,
-            exerciseRows: [...formData.exerciseRows, { exercise: "", sets: "" }]
-        })
-    }
-
-    const removeExerciseRow = (index) => {
-        const newRows = formData.exerciseRows.filter((_, i) => i !== index)
-        setFormData({
-            ...formData,
-            exerciseRows: newRows
-        })
-    }
-
-    const updateExerciseRow = (index, field, value) => {
-        const newRows = [...formData.exerciseRows]
-        newRows[index][field] = value
-        setFormData({
-            ...formData,
-            exerciseRows: newRows
-        })
-    }
-
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-        setSubmitting(true)
-        setError(null)
-
-        const exercises = formData.exerciseRows.map(row => row.exercise).filter(ex => ex)
-        const sets = formData.exerciseRows.map(row => parseInt(row.sets) || 0).filter((_, i) => exercises[i])
-
-        if (!formData.name.trim()) {
-            setError("Workout name is required")
-            setSubmitting(false)
-            return
-        }
-
-        if (exercises.length === 0) {
-            setError("At least one exercise is required")
-            setSubmitting(false)
-            return
-        }
-
-        try {
-            const response = await fetch("/workouts", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    name: formData.name,
-                    exercises: exercises,
-                    sets: sets
-                })
-            })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.error || "Failed to add workout")
-            }
-
-            // Reset form and refresh workouts
-            setFormData({
-                name: "",
-                exerciseRows: [{ exercise: "", sets: "" }]
-            })
-            setShowForm(false)
-            fetchWorkouts()
-            setSubmitting(false)
-        } catch (err) {
-            setError(err.message)
-            setSubmitting(false)
-        }
-    }
-
-    return (
-        <div className="App">
-            <h1>Workout Calculator</h1>
-            
-            <button 
-                className="add-workout-btn" 
-                onClick={() => setShowForm(!showForm)}
-            >
-                {showForm ? "Cancel" : "+ Add New Workout"}
-            </button>
-
-            {showForm && (
-                <form className="workout-form" onSubmit={handleSubmit}>
-                    <h2>Add New Workout</h2>
-                    
-                    <div className="form-group">
-                        <label htmlFor="workout-name">Workout Name:</label>
-                        <input
-                            id="workout-name"
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="e.g., Push Day"
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Exercises:</label>
-                        {formData.exerciseRows.map((row, index) => (
-                            <div key={index} className="exercise-row">
-                                <select
-                                    value={row.exercise}
-                                    onChange={(e) => updateExerciseRow(index, "exercise", e.target.value)}
-                                    required
-                                >
-                                    <option value="">Select Exercise</option>
-                                    {exercises.map(ex => (
-                                        <option key={ex.id} value={ex.name}>
-                                            {ex.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={row.sets}
-                                    onChange={(e) => updateExerciseRow(index, "sets", e.target.value)}
-                                    placeholder="Sets"
-                                    required
-                                />
-                                {formData.exerciseRows.length > 1 && (
-                                    <button
-                                        type="button"
-                                        className="remove-btn"
-                                        onClick={() => removeExerciseRow(index)}
-                                    >
-                                        Remove
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                        <button
-                            type="button"
-                            className="add-row-btn"
-                            onClick={addExerciseRow}
-                        >
-                            + Add Exercise
-                        </button>
-                    </div>
-
-                    {error && <p className="error">{error}</p>}
-
-                    <button 
-                        type="submit" 
-                        className="submit-btn"
-                        disabled={submitting}
-                    >
-                        {submitting ? "Adding..." : "Add Workout"}
-                    </button>
-                </form>
-            )}
-
-            <h2>All Workouts</h2>
-            {workouts.length === 0 ? (
-                <p>No workouts found in the database.</p>
-            ) : (
-                <ul className="workout-list">
-                    {workouts.map((workout) => (
-                        <li key={workout.id} className="workout-item">
-                            <span className="workout-id">#{workout.id}</span>
-                            <span className="workout-name">{workout.name}</span>
-                        </li>
-                    ))}
-                </ul>
-            )}
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>Exercise Name</label><br />
+          <input
+            type="text"
+            value={name}
+            required
+            onChange={e => setName(e.target.value)}
+          />
         </div>
-    )
+
+        <h3>Primary Muscles</h3>
+        <select
+          multiple
+          size={Math.min(6, muscles.length)}
+          value={primaryMuscles.map(String)}
+          onChange={handlePrimaryChange}
+        >
+          {muscles.map(m => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+
+        <h3>Secondary Muscles</h3>
+        <select
+          multiple
+          size={Math.min(6, muscles.length)}
+          value={secondaryMuscles.map(String)}
+          onChange={handleSecondaryChange}
+        >
+          {muscles.map(m => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+
+        <br /><br />
+        <button type="submit">Add Exercise</button>
+      </form>
+
+      {status && <p>{status}</p>}
+    </div>
+  );
 }
 
-export default App
+export default App;
