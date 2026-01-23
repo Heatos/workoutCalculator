@@ -13,12 +13,13 @@ function App() {
   // -------------------------
   // Load muscles from DB
   // -------------------------
-  useEffect(() => {
-    fetch("http://localhost:5000/workout.db")
-      .then(res => res.json())
-      .then(data => setMuscles(data))
-      .catch(() => setStatus("Failed to load muscles"));
-  }, []);
+useEffect(() => {
+  fetch("http://localhost:5000/muscles")
+    .then(res => res.json())
+    .then(data => setMuscles(data))
+    .catch(() => setStatus("Failed to load muscles"));
+}, []);
+
 
   // -------------------------
   // Handlers for menus

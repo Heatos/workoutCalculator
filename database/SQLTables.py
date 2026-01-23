@@ -6,6 +6,7 @@ from muscleEnum import Muscles
 # Use persistent database file instead of in-memory
 db_path = Path(__file__).parent.parent / "workout.db"
 engine = create_engine(f"sqlite+pysqlite:///{db_path}", echo=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 class Base(DeclarativeBase):
     pass

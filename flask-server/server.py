@@ -1,15 +1,17 @@
 import sys
 from pathlib import Path
-
-# Add parent directory to path so we can import database
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+from sqlalchemy import select
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # type: ignore
 import database.SQLTables as sq
 
+
+# Add parent directory to path so we can import database
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React app
+
 
 # Initialize database tables on startup
 sq.create_tables()
@@ -49,12 +51,17 @@ def add_workout():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-from flask import jsonify
-
 @app.route("/exercises", methods=["GET"])
 def get_exercises():
     all_exercises = sq.get_all_exercises()
     return jsonify(all_exercises)
+
+@app.get("/muscles")
+def get_muscles():
+    with sq.SessionLocal() as session:
+        muscles = session.scalars(select(sq.MusclesTable)).all()
+        data = [{"name": m.name} for m in muscles]
+        return jsonify(data)
 
 if __name__ == "__main__":
     app.run(debug=True)
