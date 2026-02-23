@@ -1,6 +1,6 @@
 import pytest
-from database import SQLTables
 from database.SQLTables import *
+from database.muscleEnum import Muscles as m
 
 @pytest.fixture(scope="session")
 def engine():
@@ -19,6 +19,10 @@ def db_session(engine):
     transaction.rollback()
     connection.close()
 
-def test_create_tables(db_session):
-    create_tables(db_session)
-    assert db_session is not None
+def test_create_tables():
+    assert create_tables() is not None
+
+def test_add_exercises():
+    conn = add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
+    assert conn.execute(select(Exercise.name).where(Exercise.name == "Bench Press")).scalar() is not None
+

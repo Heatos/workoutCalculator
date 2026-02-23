@@ -45,16 +45,15 @@ class Workout(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False)
 
-def create_tables(db_session):
-    current_engine = db_session.get_bind()
-    Base.metadata.create_all(current_engine)
-    Base.metadata.create_all(current_engine)
-    with current_engine.begin() as conn:
+def create_tables():
+    Base.metadata.create_all(engine)
+    with engine.begin() as conn:
         # Insert muscles only if they don't already exist
         existing_muscles = {row[0] for row in conn.execute(select(MusclesTable.name))}
         for m in Muscles:
             if m.value not in existing_muscles:
                 conn.execute(insert(MusclesTable).values(name=m.value))
+    return engine
 
 def add_exercise(name, prime_muscles, second_muscles):
     with engine.begin() as conn:
@@ -70,6 +69,7 @@ def add_exercise(name, prime_muscles, second_muscles):
                 insert(Exercise).values(name=name, muscles_exercise_id=select_muscle_id)
                 .prefix_with("OR IGNORE")
             )
+        return conn
 
 def add_workout(name, exercises, sets):
     with engine.begin() as conn:
@@ -90,7 +90,6 @@ def add_workout(name, exercises, sets):
             )
 
 def update_workout(workout_id, exercises, sets):
-
     with engine.begin() as conn:
         current_workout_exercises = conn.execute(
             select(WorkoutExercise.exercise_id)
