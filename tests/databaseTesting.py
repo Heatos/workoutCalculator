@@ -1,8 +1,20 @@
-from SQLTables import *
-from muscleEnum import Muscles
+import unittest
+
+import pytest
+
+from database.SQLTables import *
+from database.muscleEnum import *
+
+class MyTestCase(unittest.TestCase):
+    def test_something(self):
+        self.assertEqual()  
+
 
 if __name__ == '__main__':
-    create_tables()
+    unittest.main()
+
+@pytest.fixture
+def create_tables():
     add_exercise("Bench Press", [Muscles.CHEST, Muscles.SHOULDERS, Muscles.TRICEPS], [])
     add_exercise("Shoulder Press", [Muscles.SHOULDERS], [Muscles.UPPERBACK])
     add_exercise("Cable Fly", [Muscles.CHEST], [Muscles.TRICEPS])
@@ -17,8 +29,8 @@ if __name__ == '__main__':
     update_workout(1,
                    ["Bench Press", "Shoulder Press", "Cable Fly", "Cable Lateral Raise", "Triceps Extension"],
                    [3, 3, 3, 3, 4])
-    print_all_tables()
 
+@pytest.fixture
 def test_get_all_workouts():
     create_tables()
     add_exercise("Bench Press", [Muscles.CHEST, Muscles.SHOULDERS, Muscles.TRICEPS], [])
@@ -32,6 +44,7 @@ def test_get_all_workouts():
     add_workout("Push Day", ["Bench Press", "Shoulder Press", "Cable Fly", "Cable Lateral Raise", "Triceps Extension"],
                 [3, 3, 3, 3, 4])
 
+@pytest.fixture
 def test_add_workout():
     #create_tables()
     add_exercise("Bench Press", [Muscles.CHEST, Muscles.SHOULDERS, Muscles.TRICEPS], [])
@@ -43,9 +56,11 @@ def test_add_workout():
     add_workout("Push Day", ["Bench Press", "Shoulder Press", "Cable Fly", "Cable Lateral Raise", "Triceps Extension", "Captain's Chair Leg Raise"],
                 [3, 3, 3, 3, 4, 4])
 
+@pytest.fixture
 def test_add_exercise():
     #create_tables()
     add_exercise("Bench Press", [Muscles.CHEST, Muscles.SHOULDERS, Muscles.TRICEPS], [])
 
+@pytest.fixture
 def test_create_tables():
     create_tables()
