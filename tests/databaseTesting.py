@@ -52,9 +52,9 @@ def test_add_exercise():
 def test_create_tables():
     assert create_tables() is not None
 
-def test_add_exercises():
-    conn = add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
-    assert conn.execute(select(Exercise.name).where(Exercise.name == "Bench Press")).scalar() is not None
+def test_add_exercise_unique_constraint():
+    with SessionLocal() as session:
+        create_tables()
 
         add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
         add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])  # Should not duplicate
