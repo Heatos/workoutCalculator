@@ -7,7 +7,8 @@ from database.muscleEnum import Muscles as m
 
 @pytest.fixture(scope="session")
 def engine():
-    engine = create_engine("sqlite:///:memory:")
+    db_path = Path(__file__).parent.parent / "workout.db"
+    engine = create_engine(f"sqlite+pysqlite:///{db_path}", echo=True)
     Base.metadata.create_all(engine)
     return engine
 
