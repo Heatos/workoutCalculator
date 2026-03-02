@@ -2,6 +2,9 @@ import pytest
 from database.SQLTables import *
 from database.muscleEnum import Muscles as m
 
+
+# ---------------- FIXTURES ---------------- #
+
 @pytest.fixture(scope="session")
 def engine():
     engine = create_engine("sqlite:///:memory:")
