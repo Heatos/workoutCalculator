@@ -8,12 +8,15 @@ db_path = Path(__file__).parent.parent / "workout.db"
 engine = create_engine(f"sqlite+pysqlite:///{db_path}", echo=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
+
 class Base(DeclarativeBase):
     pass
+
 
 class MusclesTable(Base):
     __tablename__ = 'muscles'
     name: Mapped[str] = mapped_column(primary_key=True)
+
 
 class MusclesExercise(Base):
     __tablename__ = 'muscles_exercise'
@@ -24,11 +27,13 @@ class MusclesExercise(Base):
         UniqueConstraint("muscle_name", "is_main_muscle", name="uq_muscle_main"),
     )
 
+
 class Exercise(Base):
     __tablename__ = 'exercise'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False, unique=True)
     muscles_exercise_id: Mapped[int] = mapped_column(ForeignKey('muscles_exercise.id'))
+
 
 class WorkoutExercise(Base):
     __tablename__ = 'workout_exercise'
@@ -40,10 +45,12 @@ class WorkoutExercise(Base):
         UniqueConstraint("workout_id", "exercise_id", name="uq_workout_exercise"),
     )
 
+
 class Workout(Base):
     __tablename__ = 'workout'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False)
+
 
 def create_tables():
     Base.metadata.create_all(engine)
@@ -54,6 +61,16 @@ def create_tables():
             if m.value not in existing_muscles:
                 conn.execute(insert(MusclesTable).values(name=m.value))
     return engine
+
+
+"""
+
+:name: Name of Exercise
+
+
+
+"""
+
 
 def add_exercise(name, prime_muscles, second_muscles):
     with engine.begin() as conn:
@@ -70,6 +87,7 @@ def add_exercise(name, prime_muscles, second_muscles):
                 .prefix_with("OR IGNORE")
             )
         return conn
+
 
 def add_workout(name, exercises, sets):
     with engine.begin() as conn:
@@ -88,6 +106,7 @@ def add_workout(name, exercises, sets):
                     sets=sets[i]
                 )
             )
+
 
 def update_workout(workout_id, exercises, sets):
     with engine.begin() as conn:
@@ -112,10 +131,12 @@ def update_workout(workout_id, exercises, sets):
         for exercise_id in current_workout_exercises:
             delete_exercise_id(workout_id, exercise_id, conn)
 
+
 def get_exercise_id(exercise, conn):
-        return conn.execute(
-            select(Exercise.id).where(Exercise.name == exercise)
-        ).scalar_one()
+    return conn.execute(
+        select(Exercise.id).where(Exercise.name == exercise)
+    ).scalar_one()
+
 
 def get_muscle_id(is_main, muscle):
     return (
@@ -124,15 +145,18 @@ def get_muscle_id(is_main, muscle):
         .where(MusclesExercise.is_main_muscle == is_main)
         .scalar_subquery())
 
+
 def get_exercises_in_workout(conn, workout_id):
     return conn.execute(
         select(WorkoutExercise.exercise_id).where(WorkoutExercise.id == workout_id)
     ).all()
 
+
 def get_exercise_name(conn, exercise_id):
     return conn.execute(
         select(Exercise.name).where(Exercise.id == exercise_id)
     ).scalar()
+
 
 def delete_exercise_id(workout_id, exercise_id, conn):
     conn.execute(
@@ -141,6 +165,7 @@ def delete_exercise_id(workout_id, exercise_id, conn):
         .where(WorkoutExercise.exercise_id == exercise_id)
     )
 
+
 #return a list of all the workouts
 def get_all_workouts():
     with engine.begin() as conn:
@@ -148,7 +173,8 @@ def get_all_workouts():
             select(Workout.id, Workout.name)
         )
 
-    return [dict(id = w.id, name = w.name) for w in workouts]
+    return [dict(id=w.id, name=w.name) for w in workouts]
+
 
 #return a list of all exercises
 def get_all_exercises():
@@ -169,6 +195,7 @@ def get_all_exercises():
             })
         return result
 
+
 def get_exercises(workout_id):
     with engine.begin() as conn:
         # get all exercise_ids from the workout
@@ -180,11 +207,13 @@ def get_exercises(workout_id):
             output.append((exercise_name, exercise_id))
         return output
 
+
 def get_workout_exercise(conn, workout_id):
     return conn.execute(
         select(WorkoutExercise.id, WorkoutExercise.sets)
         .where(WorkoutExercise.workout_id == workout_id)
     )
+
 
 #creates a dictionary from muscles to how many sets they have in this list of workout ids
 def workout_list_to_muscles(workout_id_list):
@@ -194,6 +223,7 @@ def workout_list_to_muscles(workout_id_list):
         workout_to_muscles(workout_id, output_dict)
     return output_dict
 
+
 #adds to the dictionary the amount of sets a single workout adds to muscle groups
 def workout_to_muscles(workout_id, output_dict):
     #get exercise
@@ -201,6 +231,7 @@ def workout_to_muscles(workout_id, output_dict):
         workout_exercise = get_workout_exercise(conn, workout_id)
         for work_exercise in workout_exercise:
             exercise_to_muscle(work_exercise, output_dict)
+
 
 #adds to the dictionary the amount of sets a single exercise adds
 def exercise_to_muscle(work_exercise, output_dict):
@@ -211,6 +242,7 @@ def exercise_to_muscle(work_exercise, output_dict):
         )
         for exercise in exercises:
             muscles_to_muscle(exercise, output_dict, work_exercise.sets)
+
 
 #adds the amount of sets a single exercise gives
 def muscles_to_muscle(exercise, output_dict, sets):
@@ -225,11 +257,13 @@ def muscles_to_muscle(exercise, output_dict, sets):
         else:
             output_dict[muscle.muscle_name] += (sets * 0.5)
 
+
 def get_workout_ids(workouts_1):
     out_list = []
     for workout in workouts_1:
         out_list.append(workout['id'])  # add the id to the output list
     return out_list
+
 
 def print_all_tables():
     with engine.begin() as conn:

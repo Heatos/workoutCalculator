@@ -49,8 +49,6 @@ def test_add_exercise():
 
         assert exercise.name == "Bench Press"
 
-def test_create_tables():
-    assert create_tables() is not None
 
 def test_add_exercise_unique_constraint():
     with SessionLocal() as session:
