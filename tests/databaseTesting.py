@@ -9,15 +9,41 @@ def engine():
     return engine
 
 @pytest.fixture
-def db_session(engine):
-    connection = engine.connect()
-    transaction = connection.begin()
-    Session = sessionmaker(bind=connection)
-    session = Session()
-    yield session
-    session.close()
-    transaction.rollback()
-    connection.close()
+def conn(engine):
+    with engine.begin() as connection:
+        yield connection
+
+
+# ---------------- TESTS ---------------- #
+
+def test_create_tables(conn):
+    # Ensure tables exist
+    tables = Base.metadata.tables
+    assert "muscles" in tables
+    assert "exercise" in tables
+    assert "workout" in tables
+
+
+def test_insert_muscles():
+    with SessionLocal() as session:
+        # Run create_tables() which inserts enum muscles
+        create_tables()
+
+        rows = session.execute(select(MusclesTable.name)).scalars().all()
+        assert set(rows) == {m.value for m in m}
+
+
+def test_add_exercise():
+    with SessionLocal() as session:
+        create_tables()
+
+        add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
+        # Exercise should exist
+        exercise = session.execute(
+            select(Exercise).where(Exercise.name == "Bench Press")
+        ).scalar()
+
+        assert exercise.name == "Bench Press"
 
 def test_create_tables():
     assert create_tables() is not None
