@@ -54,14 +54,16 @@ class Workout(Base):
 
 def create_tables():
     Base.metadata.create_all(engine)
-    with engine.begin() as conn:
-        # Insert muscles only if they don't already exist
-        existing_muscles = {row[0] for row in conn.execute(select(MusclesTable.name))}
+    with SessionLocal() as session:
+        existing_muscles = {
+            name for (name,) in session.execute(
+                select(MusclesTable.name)
+            ).all()
+        }
         for m in Muscles:
             if m.value not in existing_muscles:
-                conn.execute(insert(MusclesTable).values(name=m.value))
-    return engine
-
+                session.add(MusclesTable(name=m.value))
+        session.commit()
 
 """
 
@@ -73,103 +75,91 @@ def create_tables():
 
 
 def add_exercise(name, prime_muscles, second_muscles):
-    with engine.begin() as conn:
+    with SessionLocal() as session:
         for i, (muscle, is_main) in enumerate(
                 [(m, True) for m in prime_muscles] + [(m, False) for m in second_muscles],
                 start=0
         ):
-            conn.execute(
-                insert(MusclesExercise).values(muscle_name=muscle.value, is_main_muscle=is_main)
-                .prefix_with("OR IGNORE"))
-            select_muscle_id = get_muscle_id(is_main, muscle)
-            conn.execute(
-                insert(Exercise).values(name=name, muscles_exercise_id=select_muscle_id)
-                .prefix_with("OR IGNORE")
-            )
-        return conn
-
+            me = MusclesExercise( muscle_name=muscle.value, is_main_muscle=is_main )
+            session.add(me)
+            session.flush()
+            session.add(Exercise(name=name, muscles_exercise_id=me.id))
+        session.commit()
 
 def add_workout(name, exercises, sets):
-    with engine.begin() as conn:
-        result = conn.execute(
+    with SessionLocal as session:
+        result = session.execute(
             insert(Workout).values(name=name)
         )
         workout_id = result.inserted_primary_key[0]
 
         for i, exercise in enumerate(exercises):
-            exercise_id = get_exercise_id(exercise, conn)
+            exercise_id = get_exercise_id(exercise)
 
-            conn.execute(
+            session.execute(
                 insert(WorkoutExercise).values(
                     workout_id=workout_id,
                     exercise_id=exercise_id,
                     sets=sets[i]
                 )
             )
+        return workout_id
 
 
 def update_workout(workout_id, exercises, sets):
-    with engine.begin() as conn:
-        current_workout_exercises = conn.execute(
+    with SessionLocal as session:
+        current_workout_exercises = session.execute(
             select(WorkoutExercise.exercise_id)
             .where(WorkoutExercise.workout_id == workout_id)
         ).scalars().all()
 
         #get exercise_id
         for i, exercise in enumerate(exercises):
-            exercise_id = get_exercise_id(exercise, conn)
+            exercise_id = get_exercise_id(exercise)
             if exercise_id in current_workout_exercises:
                 current_workout_exercises.remove(exercise_id)
-                conn.execute(
+                session.execute(
                     update(WorkoutExercise)
                     .where(WorkoutExercise.workout_id == workout_id)
                     .where(WorkoutExercise.exercise_id == exercise_id)
                     .values(sets=sets[i])
                 )
             else:
-                delete_exercise_id(workout_id, exercise_id, conn)
+                delete_exercise_id(workout_id, exercise_id)
         for exercise_id in current_workout_exercises:
-            delete_exercise_id(workout_id, exercise_id, conn)
+            delete_exercise_id(workout_id, exercise_id)
 
 
-def get_exercise_id(exercise, conn):
-    return conn.execute(
-        select(Exercise.id).where(Exercise.name == exercise)
-    ).scalar_one()
+def get_exercise_id(exercise):
+    with SessionLocal as session:
+        return session.select(Exercise.id).where(Exercise.name == exercise).scalar_one()
 
 
-def get_muscle_id(is_main, muscle):
-    return (
-        select(MusclesExercise.id)
-        .where(MusclesExercise.muscle_name == muscle.value)
-        .where(MusclesExercise.is_main_muscle == is_main)
-        .scalar_subquery())
-
-
-def get_exercises_in_workout(conn, workout_id):
-    return conn.execute(
+def get_exercises_in_workout(session, workout_id):
+    return session.execute(
         select(WorkoutExercise.exercise_id).where(WorkoutExercise.id == workout_id)
     ).all()
 
 
-def get_exercise_name(conn, exercise_id):
-    return conn.execute(
+def get_exercise_name(session, exercise_id):
+    return session.execute(
         select(Exercise.name).where(Exercise.id == exercise_id)
     ).scalar()
 
 
-def delete_exercise_id(workout_id, exercise_id, conn):
-    conn.execute(
-        delete(WorkoutExercise)
-        .where(WorkoutExercise.workout_id == workout_id)
-        .where(WorkoutExercise.exercise_id == exercise_id)
-    )
+def delete_exercise_id(workout_id, exercise_id):
+    with SessionLocal as session:
+        session.execute(
+            delete(WorkoutExercise)
+            .where(WorkoutExercise.workout_id == workout_id)
+            .where(WorkoutExercise.exercise_id == exercise_id)
+        )
 
 
 #return a list of all the workouts
 def get_all_workouts():
-    with engine.begin() as conn:
-        workouts = conn.execute(
+    with SessionLocal as session:
+        workouts = session.execute(
             select(Workout.id, Workout.name)
         )
 
@@ -178,8 +168,8 @@ def get_all_workouts():
 
 #return a list of all exercises
 def get_all_exercises():
-    with engine.begin() as conn:
-        exercises = conn.execute(
+    with SessionLocal as session:
+        exercises = session.execute(
             select(Exercise.id, Exercise.name)
         )
         result = []
@@ -197,19 +187,19 @@ def get_all_exercises():
 
 
 def get_exercises(workout_id):
-    with engine.begin() as conn:
+    with SessionLocal as session:
         # get all exercise_ids from the workout
-        exercise_rows = get_exercises_in_workout(conn, workout_id)
+        exercise_rows = get_exercises_in_workout(session, workout_id)
         output = []
         for row in exercise_rows:
             exercise_id = row[0]
-            exercise_name = get_exercise_name(conn, exercise_id)
+            exercise_name = get_exercise_name(session, exercise_id)
             output.append((exercise_name, exercise_id))
         return output
 
 
-def get_workout_exercise(conn, workout_id):
-    return conn.execute(
+def get_workout_exercise(session, workout_id):
+    return session.execute(
         select(WorkoutExercise.id, WorkoutExercise.sets)
         .where(WorkoutExercise.workout_id == workout_id)
     )
@@ -227,16 +217,16 @@ def workout_list_to_muscles(workout_id_list):
 #adds to the dictionary the amount of sets a single workout adds to muscle groups
 def workout_to_muscles(workout_id, output_dict):
     #get exercise
-    with engine.begin() as conn:
-        workout_exercise = get_workout_exercise(conn, workout_id)
+    with SessionLocal as session:
+        workout_exercise = get_workout_exercise(session, workout_id)
         for work_exercise in workout_exercise:
             exercise_to_muscle(work_exercise, output_dict)
 
 
 #adds to the dictionary the amount of sets a single exercise adds
 def exercise_to_muscle(work_exercise, output_dict):
-    with engine.begin() as conn:
-        exercises = conn.execute(
+    with SessionLocal as session:
+        exercises = session.execute(
             select(Exercise.id, Exercise.muscles_exercise_id)
             .where(Exercise.muscles_exercise_id == work_exercise.id)
         )
@@ -246,8 +236,8 @@ def exercise_to_muscle(work_exercise, output_dict):
 
 #adds the amount of sets a single exercise gives
 def muscles_to_muscle(exercise, output_dict, sets):
-    with engine.begin() as conn:
-        muscles = conn.execute(
+    with SessionLocal as session:
+        muscles = session.execute(
             select(MusclesExercise.muscle_name, MusclesExercise.is_main_muscle)
             .where(MusclesExercise.id == exercise.muscles_exercise_id)
         )
@@ -266,10 +256,10 @@ def get_workout_ids(workouts_1):
 
 
 def print_all_tables():
-    with engine.begin() as conn:
+    with SessionLocal as session:
         for table_name, table in Base.metadata.tables.items():
             print(f"\n--- {table_name.upper()} ---")
-            rows = conn.execute(select(table)).all()
+            rows = session.execute(select(table)).all()
             if not rows:
                 print("(empty)")
             else:
