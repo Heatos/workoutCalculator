@@ -14,7 +14,7 @@ CORS(app)  # Enable CORS for React app
 
 
 # Initialize database tables on startup
-sq.create_tables()
+sq.populate_muscle_table()
 
 #members API route
 @app.route("/members")

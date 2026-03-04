@@ -12,28 +12,24 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 class Base(DeclarativeBase):
     pass
 
-
 class MusclesTable(Base):
     __tablename__ = 'muscles'
     name: Mapped[str] = mapped_column(primary_key=True)
-
 
 class MusclesExercise(Base):
     __tablename__ = 'muscles_exercise'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     muscle_name: Mapped[str] = mapped_column(ForeignKey('muscles.name'))
+    exercise_id: Mapped[int] = mapped_column(ForeignKey('exercise.id'))
     is_main_muscle: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     __table_args__ = (
-        UniqueConstraint("muscle_name", "is_main_muscle", name="uq_muscle_main"),
+        UniqueConstraint("muscle_name", "exercise_id", "is_main_muscle", name="uq_muscle_main"),
     )
-
 
 class Exercise(Base):
     __tablename__ = 'exercise'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False, unique=True)
-    muscles_exercise_id: Mapped[int] = mapped_column(ForeignKey('muscles_exercise.id'))
-
 
 class WorkoutExercise(Base):
     __tablename__ = 'workout_exercise'
@@ -45,46 +41,43 @@ class WorkoutExercise(Base):
         UniqueConstraint("workout_id", "exercise_id", name="uq_workout_exercise"),
     )
 
-
 class Workout(Base):
     __tablename__ = 'workout'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False)
 
-
-def create_tables():
+def populate_muscle_table():
     Base.metadata.create_all(engine)
     with SessionLocal() as session:
         existing_muscles = {
-            name for (name,) in session.execute(
-                select(MusclesTable.name)
-            ).all()
+            name for (name,) in session.query(MusclesTable.name).distinct().all()
         }
         for m in Muscles:
             if m.value not in existing_muscles:
                 session.add(MusclesTable(name=m.value))
+                session.flush()
         session.commit()
-
-"""
-
-:name: Name of Exercise
-
-
-
-"""
-
 
 def add_exercise(name, prime_muscles, second_muscles):
     with SessionLocal() as session:
-        for i, (muscle, is_main) in enumerate(
-                [(m, True) for m in prime_muscles] + [(m, False) for m in second_muscles],
-                start=0
-        ):
-            me = MusclesExercise( muscle_name=muscle.value, is_main_muscle=is_main )
-            session.add(me)
-            session.flush()
-            session.add(Exercise(name=name, muscles_exercise_id=me.id))
-        session.commit()
+        exercise = get_or_create_exercise(name, session)
+        for i, (muscle, is_main) in enumerate([(m, True) for m in prime_muscles] + [(m, False) for m in second_muscles],start=0):
+            get_me = session.query(MusclesExercise).filter_by(exercise_id=exercise.id, muscle_name=muscle.value, is_main_muscle=is_main).first()
+            if not get_me:
+                session.add(MusclesExercise(muscle_name=muscle.value, exercise_id=exercise.id, is_main_muscle=is_main))
+                session.commit()
+        return exercise
+
+
+def get_or_create_exercise(name, session):
+    exercise = session.query(Exercise).filter_by(name=name).first()
+    if exercise is not None:
+        return exercise
+    exercise = Exercise(name=name)
+    session.add(exercise)
+    session.flush()
+    session.commit()
+    return exercise
 
 def add_workout(name, exercises, sets):
     with SessionLocal as session:
@@ -133,7 +126,6 @@ def update_workout(workout_id, exercises, sets):
 def get_exercise_id(exercise):
     with SessionLocal as session:
         return session.select(Exercise.id).where(Exercise.name == exercise).scalar_one()
-
 
 def get_exercises_in_workout(session, workout_id):
     return session.execute(
