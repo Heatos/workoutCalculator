@@ -61,32 +61,25 @@ def test_update_workout():
     populate_muscle_table()
     add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
     dips_id = add_exercise("Dips", [m.TRICEPS], [m.CHEST])
-    checked_id = add_workout("Push Day", ["Bench Press"], [4])
-    update_workout(checked_id, ["Dips"], [5])
-    exercise = get_exercises(checked_id)
+    workout_id = add_workout("Push Day", ["Bench Press"], [4])
+    update_workout(workout_id, ["Dips"], [5])
+    exercise = get_exercises(workout_id)
     with SessionLocal() as session:
         sets = session.query(WorkoutExercise.sets).filter_by(
-            workout_id=checked_id,
+            workout_id=workout_id,
             exercise_id=dips_id
         ).first()
         assert sets == (5,)
-        assert "Dips" in exercise
+        assert "Dips" in exercise[0]
 
 def test_workout_list_to_muscles():
     populate_muscle_table()
     add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
     add_exercise("Dips", [m.TRICEPS], [m.CHEST])
-    add_workout("Push Day", ["Bench Press", "Dips"], [4, 6])
-
-    with SessionLocal() as session:
-        workout_id = session.execute(select(Workout.id)).scalar_one()
-
-        result = workout_list_to_muscles([workout_id])
-
-        # Bench Press: chest +4, triceps +2
-        # Dips: triceps +6, chest +3
-        assert result[m.CHEST.value] == 7
-        assert result[m.TRICEPS.value] == 8
+    workout_id = add_workout("Push Day", ["Bench Press", "Dips"], [4, 6])
+    result = workout_list_to_muscles([workout_id])
+    assert result[m.CHEST.value] == 7
+    assert result[m.TRICEPS.value] == 8
 
 
 def test_get_all_workouts():

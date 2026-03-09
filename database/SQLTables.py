@@ -8,7 +8,6 @@ db_path = Path(__file__).parent.parent / "workout.db"
 engine = create_engine(f"sqlite+pysqlite:///{db_path}", echo=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
-
 class Base(DeclarativeBase):
     pass
 
@@ -131,8 +130,6 @@ def update_workout(workout_id, exercises, sets):
 
         session.commit()
 
-
-
 def get_exercise_id(exercise):
     with SessionLocal() as session:
         e = session.query(Exercise).where(Exercise.name == exercise).first()
@@ -152,7 +149,6 @@ def delete_exercise_id(workout_id, exercise_id):
             .where(WorkoutExercise.exercise_id == exercise_id)
         )
 
-
 #return a list of all the workouts
 def get_all_workouts():
     with SessionLocal as session:
@@ -161,7 +157,6 @@ def get_all_workouts():
         )
 
     return [dict(id=w.id, name=w.name) for w in workouts]
-
 
 #return a list of all exercises
 def get_all_exercises():
@@ -182,7 +177,6 @@ def get_all_exercises():
             })
         return result
 
-
 def get_exercises(workout_id):
     with SessionLocal() as session:
         # get all exercise_ids from the workout
@@ -194,63 +188,49 @@ def get_exercises(workout_id):
             output.append((exercise_name, exercise_id))
         return output
 
-
 def get_workout_exercise(session, workout_id):
-    return session.execute(
-        select(WorkoutExercise.id, WorkoutExercise.sets)
-        .where(WorkoutExercise.workout_id == workout_id)
-    )
-
+    return session.query(WorkoutExercise).filter_by(workout_id=workout_id).all()
 
 #creates a dictionary from muscles to how many sets they have in this list of workout ids
 def workout_list_to_muscles(workout_id_list):
     output_dict = {muscle.value: 0 for muscle in Muscles}
-
     for workout_id in workout_id_list:
-        workout_to_muscles(workout_id, output_dict)
+        workout_to_workout_exercise(workout_id, output_dict)
     return output_dict
 
-
 #adds to the dictionary the amount of sets a single workout adds to muscle groups
-def workout_to_muscles(workout_id, output_dict):
+def workout_to_workout_exercise(workout_id, output_dict):
     #get exercise
-    with SessionLocal as session:
+    with SessionLocal() as session:
         workout_exercise = get_workout_exercise(session, workout_id)
         for work_exercise in workout_exercise:
-            exercise_to_muscle(work_exercise, output_dict)
+            workout_exercise_to_exercise(session, work_exercise, output_dict)
 
+
+
+def workout_exercise_to_exercise(session, workout_exercise, output_dict):
+    exercise = session.query(Exercise).filter_by(id=workout_exercise.exercise_id).all()
 
 #adds to the dictionary the amount of sets a single exercise adds
-def exercise_to_muscle(work_exercise, output_dict):
-    with SessionLocal as session:
-        exercises = session.execute(
-            select(Exercise.id, Exercise.muscles_exercise_id)
-            .where(Exercise.muscles_exercise_id == work_exercise.id)
-        )
-        for exercise in exercises:
-            muscles_to_muscle(exercise, output_dict, work_exercise.sets)
-
+def exercise_to_muscle(session, work_exercise, output_dict):
+    exercises = session.query(Exercise).filter_by(id=work_exercise.exercise.id).all()
+    for exercise in exercises:
+        muscles_to_muscle(session, exercise, output_dict, work_exercise.sets)
 
 #adds the amount of sets a single exercise gives
-def muscles_to_muscle(exercise, output_dict, sets):
-    with SessionLocal as session:
-        muscles = session.execute(
-            select(MusclesExercise.muscle_name, MusclesExercise.is_main_muscle)
-            .where(MusclesExercise.id == exercise.muscles_exercise_id)
-        )
+def muscles_to_muscle(session, exercise, output_dict, sets):
+    muscles = session.query(MusclesExercise).filter_by(exercise_id=exercise.id)
     for muscle in muscles:
         if muscle.is_main_muscle:
             output_dict[muscle.muscle_name] += sets
         else:
             output_dict[muscle.muscle_name] += (sets * 0.5)
 
-
 def get_workout_ids(workouts_1):
     out_list = []
     for workout in workouts_1:
         out_list.append(workout['id'])  # add the id to the output list
     return out_list
-
 
 def print_all_tables():
     with SessionLocal as session:
