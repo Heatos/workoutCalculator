@@ -65,9 +65,8 @@ def add_exercise(name, prime_muscles, second_muscles):
             get_me = session.query(MusclesExercise).filter_by(exercise_id=exercise.id, muscle_name=muscle.value, is_main_muscle=is_main).first()
             if not get_me:
                 session.add(MusclesExercise(muscle_name=muscle.value, exercise_id=exercise.id, is_main_muscle=is_main))
-                session.commit()
-        return exercise
-
+        session.commit()
+        return exercise.id
 
 def get_or_create_exercise(name, session):
     exercise = session.query(Exercise).filter_by(name=name).first()
@@ -80,64 +79,70 @@ def get_or_create_exercise(name, session):
     return exercise
 
 def add_workout(name, exercises, sets):
-    with SessionLocal as session:
-        result = session.execute(
-            insert(Workout).values(name=name)
-        )
-        workout_id = result.inserted_primary_key[0]
-
+    with SessionLocal() as session:
+        workout = Workout(name=name)
+        session.add(workout)
+        session.flush()
         for i, exercise in enumerate(exercises):
             exercise_id = get_exercise_id(exercise)
+            we = WorkoutExercise(
+                    workout_id=workout.id,
+                    exercise_id=exercise_id,
+                    sets=sets[i]
+            )
+            session.add(we)
+        session.commit()
+        return workout.id
 
-            session.execute(
-                insert(WorkoutExercise).values(
+def update_workout(workout_id, exercises, sets):
+    with SessionLocal() as session:
+        # Map: exercise_id -> WorkoutExercise row
+        existing = {
+            row.exercise_id: row
+            for row in session.query(WorkoutExercise)
+                              .filter_by(workout_id=workout_id)
+                              .all()
+        }
+        # Track which exercise_ids we have processed
+        seen = set()
+        for i, exercise in enumerate(exercises):
+            exercise_id = get_exercise_id(exercise)
+            seen.add(exercise_id)
+
+            if exercise_id in existing:
+                # Update sets
+                existing[exercise_id].sets = sets[i]
+            else:
+                # Add new exercise to workout
+                we = WorkoutExercise(
                     workout_id=workout_id,
                     exercise_id=exercise_id,
                     sets=sets[i]
                 )
-            )
-        return workout_id
+                session.add(we)
 
+        # Delete exercises that are no longer in the workout
+        for exercise_id in existing:
+            if exercise_id not in seen:
+                session.query(WorkoutExercise).filter_by(
+                    workout_id=workout_id,
+                    exercise_id=exercise_id
+                ).delete()
 
-def update_workout(workout_id, exercises, sets):
-    with SessionLocal as session:
-        current_workout_exercises = session.execute(
-            select(WorkoutExercise.exercise_id)
-            .where(WorkoutExercise.workout_id == workout_id)
-        ).scalars().all()
+        session.commit()
 
-        #get exercise_id
-        for i, exercise in enumerate(exercises):
-            exercise_id = get_exercise_id(exercise)
-            if exercise_id in current_workout_exercises:
-                current_workout_exercises.remove(exercise_id)
-                session.execute(
-                    update(WorkoutExercise)
-                    .where(WorkoutExercise.workout_id == workout_id)
-                    .where(WorkoutExercise.exercise_id == exercise_id)
-                    .values(sets=sets[i])
-                )
-            else:
-                delete_exercise_id(workout_id, exercise_id)
-        for exercise_id in current_workout_exercises:
-            delete_exercise_id(workout_id, exercise_id)
 
 
 def get_exercise_id(exercise):
-    with SessionLocal as session:
-        return session.select(Exercise.id).where(Exercise.name == exercise).scalar_one()
+    with SessionLocal() as session:
+        e = session.query(Exercise).where(Exercise.name == exercise).first()
+        return e.id
 
 def get_exercises_in_workout(session, workout_id):
-    return session.execute(
-        select(WorkoutExercise.exercise_id).where(WorkoutExercise.id == workout_id)
-    ).all()
-
+    return session.query(WorkoutExercise.exercise_id).filter(WorkoutExercise.workout_id == workout_id).all()
 
 def get_exercise_name(session, exercise_id):
-    return session.execute(
-        select(Exercise.name).where(Exercise.id == exercise_id)
-    ).scalar()
-
+    return session.query(Exercise.name).filter(Exercise.id == exercise_id).first()[0]
 
 def delete_exercise_id(workout_id, exercise_id):
     with SessionLocal as session:
@@ -179,7 +184,7 @@ def get_all_exercises():
 
 
 def get_exercises(workout_id):
-    with SessionLocal as session:
+    with SessionLocal() as session:
         # get all exercise_ids from the workout
         exercise_rows = get_exercises_in_workout(session, workout_id)
         output = []

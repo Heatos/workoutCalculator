@@ -45,29 +45,32 @@ def test_add_exercise_unique_constraint():
 
 def test_add_workout():
     populate_muscle_table()
-    exercise = add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
+    exercise_id = add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
     workout_id = add_workout("Push Day", ["Bench Press"], [4])
 
     with SessionLocal() as session:
-        workout = session.query(WorkoutExercise.sets).filter_by(workout_id=workout_id, exercise_id=exercise.id).first()
+        workout = session.query(WorkoutExercise.sets).filter_by(workout_id=workout_id, exercise_id=exercise_id).first()
         #workouts = session.execute(select(Workout).where(Workout.id == workout_id))
         assert workout is not None
-        assert workout.sets == (4,)
+        we = session.query(WorkoutExercise) \
+        .filter_by(workout_id=workout_id, exercise_id=exercise_id).first()
+        assert we.sets == 4
 
 
 def test_update_workout():
     populate_muscle_table()
     add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
-    exercise_id = add_exercise("Dips", [m.TRICEPS], [m.CHEST])
+    dips_id = add_exercise("Dips", [m.TRICEPS], [m.CHEST])
     checked_id = add_workout("Push Day", ["Bench Press"], [4])
     update_workout(checked_id, ["Dips"], [5])
-
+    exercise = get_exercises(checked_id)
     with SessionLocal() as session:
-        sets = session.execute(select(WorkoutExercise.sets).where(Workout.id == checked_id)).first()
-        exercise = get_exercises(checked_id)
+        sets = session.query(WorkoutExercise.sets).filter_by(
+            workout_id=checked_id,
+            exercise_id=dips_id
+        ).first()
         assert sets == (5,)
-        assert exercise.__contains__("Dips")
-
+        assert "Dips" in exercise
 
 def test_workout_list_to_muscles():
     populate_muscle_table()
