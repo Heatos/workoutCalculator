@@ -151,10 +151,8 @@ def delete_exercise_id(workout_id, exercise_id):
 
 #return a list of all the workouts
 def get_all_workouts():
-    with SessionLocal as session:
-        workouts = session.execute(
-            select(Workout.id, Workout.name)
-        )
+    with SessionLocal() as session:
+        workouts = session.query(Workout).all()
 
     return [dict(id=w.id, name=w.name) for w in workouts]
 
@@ -194,37 +192,32 @@ def get_workout_exercise(session, workout_id):
 #creates a dictionary from muscles to how many sets they have in this list of workout ids
 def workout_list_to_muscles(workout_id_list):
     output_dict = {muscle.value: 0 for muscle in Muscles}
-    for workout_id in workout_id_list:
-        workout_to_workout_exercise(workout_id, output_dict)
+    with SessionLocal() as session:
+        for workout_id in workout_id_list:
+            workout_to_workout_exercise(output_dict, session, workout_id)
     return output_dict
 
-#adds to the dictionary the amount of sets a single workout adds to muscle groups
-def workout_to_workout_exercise(workout_id, output_dict):
-    #get exercise
-    with SessionLocal() as session:
-        workout_exercise = get_workout_exercise(session, workout_id)
-        for work_exercise in workout_exercise:
-            workout_exercise_to_exercise(session, work_exercise, output_dict)
+
+def workout_to_workout_exercise(output_dict, session, workout_id):
+    workout_exercises = get_workout_exercise(session, workout_id)
+    for work_exercise in workout_exercises:
+        workout_exercise_to_exercise(output_dict, session, work_exercise)
 
 
-
-def workout_exercise_to_exercise(session, workout_exercise, output_dict):
-    exercise = session.query(Exercise).filter_by(id=workout_exercise.exercise_id).all()
-
-#adds to the dictionary the amount of sets a single exercise adds
-def exercise_to_muscle(session, work_exercise, output_dict):
-    exercises = session.query(Exercise).filter_by(id=work_exercise.exercise.id).all()
+def workout_exercise_to_exercise(output_dict, session, work_exercise):
+    exercises = session.query(Exercise).filter_by(id=work_exercise.exercise_id).all()
     for exercise in exercises:
-        muscles_to_muscle(session, exercise, output_dict, work_exercise.sets)
+        exercise_to_muscle_exercise(exercise, output_dict, session, work_exercise)
 
-#adds the amount of sets a single exercise gives
-def muscles_to_muscle(session, exercise, output_dict, sets):
-    muscles = session.query(MusclesExercise).filter_by(exercise_id=exercise.id)
-    for muscle in muscles:
-        if muscle.is_main_muscle:
-            output_dict[muscle.muscle_name] += sets
+
+def exercise_to_muscle_exercise(exercise, output_dict, session, work_exercise):
+    muscle_exercises = session.query(MusclesExercise).filter_by(exercise_id=exercise.id).all()
+    for muscle_exercise in muscle_exercises:
+        if muscle_exercise.is_main_muscle:
+            output_dict[muscle_exercise.muscle_name] += work_exercise.sets
         else:
-            output_dict[muscle.muscle_name] += (sets * 0.5)
+            output_dict[muscle_exercise.muscle_name] += (work_exercise.sets * 0.5)
+
 
 def get_workout_ids(workouts_1):
     out_list = []
