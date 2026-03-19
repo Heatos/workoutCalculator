@@ -18,7 +18,6 @@ def test_create_tables():
     assert "exercise" in tables
     assert "workout" in tables
 
-
 def test_insert_muscles():
     # Run create_tables() which inserts enum muscles
     populate_muscle_table()
@@ -26,14 +25,12 @@ def test_insert_muscles():
         rows = session.execute(select(MusclesTable.name)).scalars().all()
         assert set(rows) == {m.value for m in m}
 
-
 def test_add_exercise():
     populate_muscle_table()
     add_exercise("Bench Press", [m.CHEST], [m.TRICEPS])
     with SessionLocal() as session:
         exercise = session.query(Exercise).filter_by(name="Bench Press").first()
         assert exercise is not None
-
 
 def test_add_exercise_unique_constraint():
     populate_muscle_table()
@@ -55,7 +52,6 @@ def test_add_workout():
         we = session.query(WorkoutExercise) \
         .filter_by(workout_id=workout_id, exercise_id=exercise_id).first()
         assert we.sets == 4
-
 
 def test_update_workout():
     populate_muscle_table()
@@ -81,6 +77,15 @@ def test_workout_list_to_muscles():
     assert result[m.CHEST.value] == 7
     assert result[m.TRICEPS.value] == 8
 
+    add_exercise("Squat", [m.QUADRICEPS, m.HAMSTRINGS, m.GLUTES], [])
+    add_exercise("Calf Raises", [], [m.CALVES])
+    workout_id_1 = add_workout("Leg Day", ["Squat", "Calf Raises"], [4, 6])
+    result = workout_list_to_muscles([workout_id, workout_id_1])
+
+    assert result[m.CHEST.value] == 7
+    assert result[m.TRICEPS.value] == 8
+    assert result[m.QUADRICEPS.value] == 4
+    assert result[m.CALVES.value] == 3
 
 def test_get_all_workouts():
     populate_muscle_table()
@@ -90,7 +95,6 @@ def test_get_all_workouts():
     workouts = get_all_workouts()
     assert len(workouts) == 1
     assert workouts[0]["name"] == "Push Day"
-
 
 def test_get_exercises():
     populate_muscle_table()
