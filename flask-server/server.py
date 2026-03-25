@@ -21,10 +21,11 @@ sq.populate_muscle_table()
 def members():
     return {"members": ["Member 1", "Member 2", "Member 3"]}
 
-@app.route("/workouts", methods=["GET"])
+@app.route("/workouts")
 def get_workouts():
-    all_workouts = sq.get_all_workouts()
-    return {"workouts": all_workouts}
+    workouts = sq.get_all_workouts()
+    print(workouts)
+    return jsonify(workouts)
 
 @app.route("/workouts", methods=["POST"])
 def add_workout():
@@ -55,6 +56,15 @@ def add_workout():
 def get_exercises():
     all_exercises = sq.get_all_exercises()
     return jsonify(all_exercises)
+
+@app.route("/exercises", methods=["POST"])
+def create_exercise():
+    data = request.json
+    exercise = sq.Exercise(name=data["name"], description=data.get("description"))
+    .session.add(exercise)
+    .session.commit()
+    return jsonify({"id": exercise.id, "name": exercise.name}), 201
+
 
 @app.get("/muscles")
 def get_muscles():
