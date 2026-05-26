@@ -142,8 +142,8 @@ def get_exercise_name(session, exercise_id):
     return session.query(Exercise.name).filter(Exercise.id == exercise_id).first()[0]
 
 def delete_exercise_id(workout_id, exercise_id):
-    with SessionLocal as session:
-        session.execute(
+    with SessionLocal() as session:
+        session.query(
             delete(WorkoutExercise)
             .where(WorkoutExercise.workout_id == workout_id)
             .where(WorkoutExercise.exercise_id == exercise_id)
@@ -158,7 +158,7 @@ def get_all_workouts():
 
 #return a list of all exercises
 def get_all_exercises():
-    with SessionLocal as session:
+    with SessionLocal() as session:
         exercises = session.execute(
             select(Exercise.id, Exercise.name)
         )
@@ -226,7 +226,7 @@ def get_workout_ids(workouts_1):
     return out_list
 
 def print_all_tables():
-    with SessionLocal as session:
+    with SessionLocal() as session:
         for table_name, table in Base.metadata.tables.items():
             print(f"\n--- {table_name.upper()} ---")
             rows = session.execute(select(table)).all()
